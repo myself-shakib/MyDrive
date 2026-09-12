@@ -1,4 +1,4 @@
-name: Android Build
+name: My Drive Android Build
 
 on:
   push:
@@ -6,6 +6,9 @@ on:
       - main
       - master
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -27,8 +30,21 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Rename APK
+        run: |
+          APK=$(find . -path "*/build/outputs/apk/debug/*.apk" -type f | head -n 1)
+          cp "$APK" "My-Drive-debug.apk"
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: '**/build/outputs/apk/debug/*.apk'
+          name: My-Drive-APK
+          path: My-Drive-debug.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: My Drive Build ${{ github.run_number }}
+          files: My-Drive-debug.apk
+          generate_release_notes: false
