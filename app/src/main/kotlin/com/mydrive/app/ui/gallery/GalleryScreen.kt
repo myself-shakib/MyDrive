@@ -1,5 +1,7 @@
 package com.mydrive.app.ui.gallery
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,10 +26,12 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,10 +40,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mydrive.app.data.local.MediaPermissions
 import com.mydrive.app.ui.components.EmptyState
 import com.mydrive.app.ui.components.MediaThumb
+import com.mydrive.app.ui.components.PrimaryActionButton
 import com.mydrive.app.ui.theme.ChipShape
 import com.mydrive.app.ui.theme.Copper
 import com.mydrive.app.ui.theme.Graphite
@@ -56,7 +64,26 @@ fun GalleryScreen(
     onMediaClick: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var didRequestPermission by rememberSaveable { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        viewModel.onPermissionResult(MediaPermissions.hasAccess(context))
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onPermissionResult(MediaPermissions.hasAccess(context))
+    }
+
+    LaunchedEffect(state.needsPermission, didRequestPermission) {
+        if (state.needsPermission && !didRequestPermission) {
+            didRequestPermission = true
+            permissionLauncher.launch(MediaPermissions.required())
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -101,36 +128,84 @@ fun GalleryScreen(
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm)
         )
 
-        if (state.groups.isEmpty()) {
-            EmptyState(
-                title = "No media yet",
-                message = "Your backed up photos and videos will appear here.",
-                icon = Icons.Outlined.PhotoLibrary,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = Spacing.md,
-                    end = Spacing.md,
-                    bottom = Spacing.lg
-                ),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
-            ) {
-                state.groups.forEach { group ->
-                    item(span = { GridItemSpan(3) }, key = "g-${group.label}") {
-                        Text(
-                            text = group.label,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Mist,
-                            modifier = Modifier.padding(top = Spacing.md, bottom = Spacing.xs)
-                        )
-                    }
-                    items(group.items, key = { it.id }) { item ->
-                        MediaThumb(item = item, onClick = { onMediaClick(item.id) })
+        when {
+            state.needsPermission -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    EmptyState(
+                        title = "Allow photo access",
+                        message = "Grant access to photos and videos on this device to see them here.",
+                        icon = Icons.Outlined.PhotoLibrary,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    PrimaryActionButton(
+                        text = "Allow access",
+                        onClick = {
+                            didRequestPermission = true
+                            permissionLauncher.launch(MediaPermissions.required())
+                        }
+                    )
+                }
+            }
+            state.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Copper)
+                }
+            }
+            state.errorMessage != null -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    EmptyState(
+                        title = "Couldn't load media",
+                        message = state.errorMessage.orEmpty(),
+                        icon = Icons.Outlined.PhotoLibrary,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    PrimaryActionButton(
+                        text = "Try again",
+                        onClick = viewModel::retry
+                    )
+                }
+            }
+            state.groups.isEmpty() -> {
+                EmptyState(
+                    title = "No media yet",
+                    message = "Your backed up photos and videos will appear here.",
+                    icon = Icons.Outlined.PhotoLibrary,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            else -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = Spacing.md,
+                        end = Spacing.md,
+                        bottom = Spacing.lg
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    state.groups.forEach { group ->
+                        item(span = { GridItemSpan(3) }, key = "g-${group.label}") {
+                            Text(
+                                text = group.label,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Mist,
+                                modifier = Modifier.padding(top = Spacing.md, bottom = Spacing.xs)
+                            )
+                        }
+                        items(group.items, key = { it.id }) { item ->
+                            MediaThumb(item = item, onClick = { onMediaClick(item.id) })
+                        }
                     }
                 }
             }

@@ -1,5 +1,7 @@
 package com.mydrive.app.data.model
 
+import android.net.Uri
+
 enum class MediaType {
     PHOTO,
     VIDEO
@@ -35,7 +37,8 @@ data class MediaItem(
     val telegramCompleted: Boolean = true,
     val thumbnailSeed: Int,
     val progress: Float = 0f,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val contentUri: Uri? = null
 )
 
 data class ActivityEvent(

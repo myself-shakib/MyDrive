@@ -1,5 +1,6 @@
 package com.mydrive.app.ui.media
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mydrive.app.data.model.BackupState
@@ -60,6 +62,7 @@ import com.mydrive.app.ui.theme.Stroke
 import com.mydrive.app.ui.util.formatDateTime
 import com.mydrive.app.ui.util.formatDuration
 import com.mydrive.app.ui.util.formatFileSize
+import com.mydrive.app.ui.util.rememberMediaThumbnail
 import com.mydrive.app.ui.util.thumbnailBrush
 
 @Composable
@@ -96,6 +99,7 @@ fun MediaDetailsScreen(
                 .background(Ink)
                 .padding(horizontal = Spacing.md)
         ) {
+            val preview = rememberMediaThumbnail(item.contentUri, sizePx = 720)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,6 +108,14 @@ fun MediaDetailsScreen(
                     .background(thumbnailBrush(item.thumbnailSeed, item.type)),
                 contentAlignment = Alignment.Center
             ) {
+                if (preview != null) {
+                    Image(
+                        bitmap = preview,
+                        contentDescription = item.filename,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .matchParentSize()

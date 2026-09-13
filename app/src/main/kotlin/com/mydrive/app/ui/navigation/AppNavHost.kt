@@ -37,6 +37,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.mydrive.app.data.repository.LocalMediaRepository
 import com.mydrive.app.data.repository.MediaRepository
 import com.mydrive.app.ui.gallery.GalleryScreen
 import com.mydrive.app.ui.gallery.GalleryViewModel
@@ -72,7 +73,10 @@ private val tabs = listOf(
 )
 
 @Composable
-fun AppNavHost(repository: MediaRepository) {
+fun AppNavHost(
+    repository: MediaRepository,
+    localMediaRepository: LocalMediaRepository
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -156,7 +160,7 @@ fun AppNavHost(repository: MediaRepository) {
                 )
             }
             composable(AppDestination.Gallery.route) {
-                val vm: GalleryViewModel = viewModel(factory = GalleryViewModel.factory(repository))
+                val vm: GalleryViewModel = viewModel(factory = GalleryViewModel.factory(localMediaRepository))
                 GalleryScreen(
                     viewModel = vm,
                     onMediaClick = { id -> navController.navigate(AppDestination.MediaDetails.create(id)) }
@@ -182,7 +186,7 @@ fun AppNavHost(repository: MediaRepository) {
             ) { entry ->
                 val mediaId = entry.arguments?.getString("mediaId").orEmpty()
                 val vm: MediaDetailsViewModel = viewModel(
-                    factory = MediaDetailsViewModel.factory(repository, mediaId)
+                    factory = MediaDetailsViewModel.factory(repository, localMediaRepository, mediaId)
                 )
                 MediaDetailsScreen(viewModel = vm, onBack = { navController.popBackStack() })
             }

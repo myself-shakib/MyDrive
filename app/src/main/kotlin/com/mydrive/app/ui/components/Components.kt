@@ -1,5 +1,6 @@
 package com.mydrive.app.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +68,7 @@ import com.mydrive.app.ui.theme.StatusSyncing
 import com.mydrive.app.ui.theme.Stroke
 import com.mydrive.app.ui.theme.StrokeStrong
 import com.mydrive.app.ui.util.formatDuration
+import com.mydrive.app.ui.util.rememberMediaThumbnail
 import com.mydrive.app.ui.util.thumbnailBrush
 
 @Composable
@@ -199,17 +202,27 @@ fun MediaThumb(
     onClick: (() -> Unit)? = null
 ) {
     val clickMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    val thumbnail = rememberMediaThumbnail(item.contentUri)
     Box(
         modifier = modifier
             .clip(MediaShape)
             .aspectRatio(1f)
             .then(clickMod)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(thumbnailBrush(item.thumbnailSeed, item.type))
-        )
+        if (thumbnail != null) {
+            Image(
+                bitmap = thumbnail,
+                contentDescription = item.filename,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(thumbnailBrush(item.thumbnailSeed, item.type))
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

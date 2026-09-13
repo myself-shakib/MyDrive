@@ -13,10 +13,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
-        val repository = (application as MyDriveApp).mediaRepository
+        val app = application as MyDriveApp
         setContent {
             MyDriveTheme {
-                AppNavHost(repository = repository)
+                AppNavHost(
+                    repository = app.mediaRepository,
+                    localMediaRepository = app.localMediaRepository
+                )
             }
         }
     }
